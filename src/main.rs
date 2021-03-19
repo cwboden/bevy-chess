@@ -4,7 +4,7 @@ use bevy_mod_picking::{DebugPickingPlugin, PickSource, PickingPlugin};
 mod board;
 mod pieces;
 use board::BoardPlugin;
-use pieces::create_pieces;
+use pieces::PiecesPlugin;
 
 fn setup(commands: &mut Commands) {
     commands
@@ -37,7 +37,7 @@ fn main() {
         .add_plugin(PickingPlugin)
         .add_plugin(DebugPickingPlugin)
         .add_plugin(BoardPlugin)
+        .add_plugin(PiecesPlugin)
         .add_startup_system(setup.system())
-        .add_startup_system(create_pieces.system())
         .run();
 }

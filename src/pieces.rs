@@ -238,7 +238,7 @@ fn spawn_pawn(
         });
 }
 
-pub fn create_pieces(
+fn create_pieces(
     commands: &mut Commands,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -397,5 +397,13 @@ pub fn create_pieces(
             pawn_handle.clone(),
             (6, i),
         );
+    }
+}
+
+pub struct PiecesPlugin;
+
+impl Plugin for PiecesPlugin {
+    fn build(&self, app: &mut AppBuilder) {
+        app.add_startup_system(create_pieces.system());
     }
 }
