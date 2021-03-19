@@ -13,11 +13,11 @@ impl Square {
 }
 
 #[derive(Default)]
-pub struct SelectedSquare {
+struct SelectedSquare {
     entity: Option<Entity>,
 }
 
-pub fn create_board(
+fn create_board(
     commands: &mut Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -45,7 +45,7 @@ pub fn create_board(
     }
 }
 
-pub fn color_squares(
+fn color_squares(
     pick_state: Res<PickState>,
     selected_square: Res<SelectedSquare>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -71,5 +71,15 @@ pub fn color_squares(
         } else {
             Color::rgb(0., 0.1, 0.1)
         };
+    }
+}
+
+pub struct BoardPlugin;
+
+impl Plugin for BoardPlugin {
+    fn build(&self, app: &mut AppBuilder) {
+        app.init_resource::<SelectedSquare>()
+            .add_startup_system(create_board.system())
+            .add_system(color_squares.system());
     }
 }

@@ -3,7 +3,7 @@ use bevy_mod_picking::{DebugPickingPlugin, PickSource, PickingPlugin};
 
 mod board;
 mod pieces;
-use board::{color_squares, create_board, SelectedSquare};
+use board::BoardPlugin;
 use pieces::create_pieces;
 
 fn setup(commands: &mut Commands) {
@@ -36,10 +36,8 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(PickingPlugin)
         .add_plugin(DebugPickingPlugin)
+        .add_plugin(BoardPlugin)
         .add_startup_system(setup.system())
-        .add_startup_system(create_board.system())
         .add_startup_system(create_pieces.system())
-        .add_resource(SelectedSquare::default())
-        .add_system(color_squares.system())
         .run();
 }
