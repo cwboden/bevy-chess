@@ -89,12 +89,13 @@ fn deselect_all(
 }
 
 fn select_square(
+    commands: &mut Commands,
     pick_state: Res<PickState>,
     mouse_button_inputs: Res<Input<MouseButton>>,
     mut selected_square: ResMut<SelectedSquare>,
     mut selected_piece: ResMut<SelectedPiece>,
     squares_query: Query<&Square>,
-    mut pieces_query: Query<(Entity, &mut Piece)>,
+    mut pieces_query: Query<(Entity, &mut Piece, &Children)>,
 ) {
     // Only care about running this if the mouse button is pressed
     if !mouse_button_inputs.just_pressed(MouseButton::Left) {
@@ -108,12 +109,39 @@ fn select_square(
 
             // If a piece is currently selected, move it to chosen square
             if let Some(selected_piece_entity) = selected_piece.entity {
-                let pieces_vec: Vec<Piece> =
-                    pieces_query.iter_mut().map(|(_, piece)| *piece).collect();
+                let piece_entities_vec: Vec<(Entity, Piece, Vec<Entity>)> = pieces_query
+                    .iter_mut()
+                    .map(|(entity, piece, children)| {
+                        (
+                            entity,
+                            *piece,
+                            children.iter().map(|entity| *entity).collect(),
+                        )
+                    })
+                    .collect();
 
-                if let Ok((_piece_entity, mut piece)) = pieces_query.get_mut(selected_piece_entity)
+                let pieces_vec: Vec<Piece> = pieces_query
+                    .iter_mut()
+                    .map(|(_, piece, _)| *piece)
+                    .collect();
+
+                if let Ok((_piece_entity, mut piece, _children)) =
+                    pieces_query.get_mut(selected_piece_entity)
                 {
                     if piece.is_move_valid((square.x, square.y), &pieces_vec) {
+                        // Despawn pieces of the other color, if they exist
+                        for (other_entity, other_piece, other_children) in piece_entities_vec {
+                            if other_piece.x == square.x
+                                && other_piece.y == square.y
+                                && other_piece.color != piece.color
+                            {
+                                commands.despawn(other_entity);
+                                for child in other_children {
+                                    commands.despawn(child);
+                                }
+                            }
+                        }
+
                         piece.x = square.x;
                         piece.y = square.y;
                     }
@@ -123,7 +151,7 @@ fn select_square(
                 deselect_all(selected_square, selected_piece);
             } else {
                 // Otherwise, select piece in chosen square (if it exists)
-                for (piece_entity, piece) in pieces_query.iter_mut() {
+                for (piece_entity, piece, _children) in pieces_query.iter_mut() {
                     if piece.x == square.x && piece.y == square.y {
                         selected_piece.entity = Some(piece_entity);
                         break;
