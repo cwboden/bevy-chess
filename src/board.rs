@@ -80,20 +80,12 @@ fn color_squares(
     }
 }
 
-fn deselect_all(
-    mut selected_square: ResMut<SelectedSquare>,
-    mut selected_piece: ResMut<SelectedPiece>,
-) {
-    selected_square.entity = None;
-    selected_piece.entity = None;
-}
-
 fn select_square(
     pick_state: Res<PickState>,
     mouse_button_inputs: Res<Input<MouseButton>>,
     mut selected_square: ResMut<SelectedSquare>,
-    selected_piece: ResMut<SelectedPiece>,
     squares_query: Query<&Square>,
+    mut reset_selected_event: ResMut<Events<ResetSelectedEvent>>,
 ) {
     // Only care about running this if the mouse button is pressed
     if !mouse_button_inputs.just_pressed(MouseButton::Left) {
@@ -108,7 +100,7 @@ fn select_square(
         }
     } else {
         // Player clicked outside the board
-        deselect_all(selected_square, selected_piece);
+        reset_selected_event.send(ResetSelectedEvent);
     }
 }
 
@@ -151,6 +143,7 @@ fn move_piece(
     mut turn: ResMut<PlayerTurn>,
     squares_query: Query<&Square>,
     mut pieces_query: Query<(Entity, &mut Piece)>,
+    mut reset_selected_event: ResMut<Events<ResetSelectedEvent>>,
 ) {
     // Only care if a square is selected
     let square_entity = if let Some(entity) = selected_square.entity {
@@ -202,6 +195,22 @@ fn move_piece(
             // Change turn
             turn.change();
         }
+
+        reset_selected_event.send(ResetSelectedEvent);
+    }
+}
+
+struct ResetSelectedEvent;
+
+fn reset_selected(
+    mut event_reader: Local<EventReader<ResetSelectedEvent>>,
+    events: Res<Events<ResetSelectedEvent>>,
+    mut selected_square: ResMut<SelectedSquare>,
+    mut selected_piece: ResMut<SelectedSquare>,
+) {
+    for _ in event_reader.iter(&events) {
+        selected_square.entity = None;
+        selected_piece.entity = None;
     }
 }
 
@@ -233,6 +242,7 @@ impl Plugin for BoardPlugin {
             .add_system(color_squares.system())
             .add_system(select_square.system())
             .add_system(select_piece.system())
-            .add_system(move_piece.system());
+            .add_system(move_piece.system())
+            .add_system(reset_selected.system());
     }
 }
