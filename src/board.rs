@@ -184,7 +184,7 @@ fn select_square(
     }
 }
 
-struct PlayerTurn(PieceColor);
+pub struct PlayerTurn(pub PieceColor);
 
 impl Default for PlayerTurn {
     fn default() -> Self {
