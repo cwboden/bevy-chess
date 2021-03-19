@@ -1,5 +1,5 @@
-use crate::pieces::{Piece, PieceColor};
-use bevy::prelude::*;
+use crate::pieces::{Piece, PieceColor, PieceType};
+use bevy::{app::AppExit, prelude::*};
 use bevy_mod_picking::{Group, PickState, PickableMesh};
 
 pub struct Square {
@@ -184,7 +184,7 @@ fn move_piece(
                     && other_piece.y == square.y
                     && other_piece.color != piece.color
                 {
-                    commands.despawn_recursive(other_entity);
+                    commands.insert_one(other_entity, Taken);
                 }
             }
 
@@ -231,6 +231,30 @@ impl PlayerTurn {
     }
 }
 
+struct Taken;
+
+fn despawn_taken_pieces(
+    commands: &mut Commands,
+    mut app_exit_events: ResMut<Events<AppExit>>,
+    query: Query<(Entity, &Piece, &Taken)>,
+) {
+    for (entity, piece, _taken) in query.iter() {
+        // If the King is taken, Game Over!
+        if piece.piece_type == PieceType::King {
+            println!(
+                "{} won! Thanks for playing.",
+                match piece.color {
+                    PieceColor::White => "Black",
+                    PieceColor::Black => "White",
+                }
+            );
+            app_exit_events.send(AppExit);
+        }
+
+        commands.despawn_recursive(entity);
+    }
+}
+
 pub struct BoardPlugin;
 
 impl Plugin for BoardPlugin {
@@ -238,11 +262,13 @@ impl Plugin for BoardPlugin {
         app.init_resource::<SelectedSquare>()
             .init_resource::<SelectedPiece>()
             .init_resource::<PlayerTurn>()
+            .add_event::<ResetSelectedEvent>()
             .add_startup_system(create_board.system())
             .add_system(color_squares.system())
-            .add_system(select_square.system())
-            .add_system(select_piece.system())
+            .add_system(despawn_taken_pieces.system())
             .add_system(move_piece.system())
-            .add_system(reset_selected.system());
+            .add_system(reset_selected.system())
+            .add_system(select_piece.system())
+            .add_system(select_square.system());
     }
 }
