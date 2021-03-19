@@ -1,5 +1,21 @@
 use bevy::prelude::*;
-use bevy_mod_picking::PickableMesh;
+use bevy_mod_picking::{Group, PickState, PickableMesh};
+
+pub struct Square {
+    pub x: u8,
+    pub y: u8,
+}
+
+impl Square {
+    fn is_white(&self) -> bool {
+        (self.x + self.y + 1) % 2 == 0
+    }
+}
+
+#[derive(Default)]
+pub struct SelectedSquare {
+    entity: Option<Entity>,
+}
 
 pub fn create_board(
     commands: &mut Commands,
@@ -7,24 +23,53 @@ pub fn create_board(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let mesh = meshes.add(Mesh::from(shape::Plane { size: 1.0 }));
-    let white_material = materials.add(Color::rgb(1., 0.9, 0.9).into());
-    let black_material = materials.add(Color::rgb(0., 0.1, 0.1).into());
 
     // Create the 64 squares
     for x in 0..8 {
         for y in 0..8 {
+            let square = Square { x, y };
             commands
                 .spawn(PbrBundle {
                     mesh: mesh.clone(),
-                    material: if (x + y + 1) % 2 == 0 {
-                        white_material.clone()
+                    material: if square.is_white() {
+                        materials.add(Color::rgb(1., 0.9, 0.9).into())
                     } else {
-                        black_material.clone()
+                        materials.add(Color::rgb(0., 0.1, 0.1).into())
                     },
                     transform: Transform::from_translation(Vec3::new(x as f32, 0., y as f32)),
                     ..Default::default()
                 })
-                .with(PickableMesh::default());
+                .with(PickableMesh::default())
+                .with(square);
         }
+    }
+}
+
+pub fn color_squares(
+    pick_state: Res<PickState>,
+    selected_square: Res<SelectedSquare>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    query: Query<(Entity, &Square, &Handle<StandardMaterial>)>,
+) {
+    let top_entity = if let Some((entity, _intersection)) = pick_state.top(Group::default()) {
+        Some(*entity)
+    } else {
+        None
+    };
+
+    for (entity, square, material_handle) in query.iter() {
+        // Get the material
+        let material = materials.get_mut(material_handle).unwrap();
+
+        // Change the color of the selected square
+        material.albedo = if Some(entity) == top_entity {
+            Color::rgb(0.8, 0.3, 0.3)
+        } else if Some(entity) == selected_square.entity {
+            Color::rgb(0.9, 0.1, 0.1)
+        } else if square.is_white() {
+            Color::rgb(1., 0.9, 0.9)
+        } else {
+            Color::rgb(0., 0.1, 0.1)
+        };
     }
 }
