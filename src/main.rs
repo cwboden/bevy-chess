@@ -1,6 +1,7 @@
-mod pieces;
-
 use bevy::prelude::*;
+use bevy_mod_picking::{DebugPickingPlugin, PickSource, PickableMesh, PickingPlugin};
+
+mod pieces;
 use pieces::{spawn_bishop, spawn_king, spawn_knight, spawn_pawn, spawn_queen, spawn_rook};
 
 fn setup(commands: &mut Commands) {
@@ -13,6 +14,7 @@ fn setup(commands: &mut Commands) {
             )),
             ..Default::default()
         })
+        .with(PickSource::default())
         // Light
         .spawn(LightBundle {
             transform: Transform::from_translation(Vec3::new(4.0, 8.0, 4.0)),
@@ -32,16 +34,18 @@ fn create_board(
     // Create the 64 squares
     for x in 0..8 {
         for y in 0..8 {
-            commands.spawn(PbrBundle {
-                mesh: mesh.clone(),
-                material: if (x + y + 1) % 2 == 0 {
-                    white_material.clone()
-                } else {
-                    black_material.clone()
-                },
-                transform: Transform::from_translation(Vec3::new(x as f32, 0., y as f32)),
-                ..Default::default()
-            });
+            commands
+                .spawn(PbrBundle {
+                    mesh: mesh.clone(),
+                    material: if (x + y + 1) % 2 == 0 {
+                        white_material.clone()
+                    } else {
+                        black_material.clone()
+                    },
+                    transform: Transform::from_translation(Vec3::new(x as f32, 0., y as f32)),
+                    ..Default::default()
+                })
+                .with(PickableMesh::default());
         }
     }
 }
@@ -200,6 +204,8 @@ fn main() {
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
+        .add_plugin(PickingPlugin)
+        .add_plugin(DebugPickingPlugin)
         .add_startup_system(setup.system())
         .add_startup_system(create_board.system())
         .add_startup_system(create_pieces.system())
