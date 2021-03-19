@@ -62,10 +62,10 @@ fn color_squares(
         let material = materials.get_mut(material_handle).unwrap();
 
         // Change the color of the selected square
-        material.albedo = if Some(entity) == top_entity {
+        material.albedo = if Some(entity) == selected_square.entity {
+            Color::rgb(0.8, 0.6, 0.1)
+        } else if Some(entity) == top_entity {
             Color::rgb(0.8, 0.3, 0.3)
-        } else if Some(entity) == selected_square.entity {
-            Color::rgb(0.9, 0.1, 0.1)
         } else if square.is_white() {
             Color::rgb(1., 0.9, 0.9)
         } else {
