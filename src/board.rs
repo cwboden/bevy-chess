@@ -1,3 +1,4 @@
+use crate::pieces::Piece;
 use bevy::prelude::*;
 use bevy_mod_picking::{Group, PickState, PickableMesh};
 
@@ -14,6 +15,11 @@ impl Square {
 
 #[derive(Default)]
 struct SelectedSquare {
+    entity: Option<Entity>,
+}
+
+#[derive(Default)]
+struct SelectedPiece {
     entity: Option<Entity>,
 }
 
@@ -74,22 +80,56 @@ fn color_squares(
     }
 }
 
+fn deselect_all(
+    mut selected_square: ResMut<SelectedSquare>,
+    mut selected_piece: ResMut<SelectedPiece>,
+) {
+    selected_square.entity = None;
+    selected_piece.entity = None;
+}
+
 fn select_square(
     pick_state: Res<PickState>,
     mouse_button_inputs: Res<Input<MouseButton>>,
     mut selected_square: ResMut<SelectedSquare>,
+    mut selected_piece: ResMut<SelectedPiece>,
+    squares_query: Query<&Square>,
+    mut pieces_query: Query<(Entity, &mut Piece)>,
 ) {
     // Only care about running this if the mouse button is pressed
     if !mouse_button_inputs.just_pressed(MouseButton::Left) {
         return;
     }
 
-    selected_square.entity = if let Some((entity, _intersection)) = pick_state.top(Group::default())
-    {
-        Some(*entity)
+    if let Some((square_entity, _intersection)) = pick_state.top(Group::default()) {
+        if let Ok(square) = squares_query.get(*square_entity) {
+            // Mark clicked square as selected
+            selected_square.entity = Some(*square_entity);
+
+            // If a piece is currently selected, move it to chosen square
+            if let Some(selected_piece_entity) = selected_piece.entity {
+                if let Ok((_piece_entity, mut piece)) = pieces_query.get_mut(selected_piece_entity)
+                {
+                    piece.x = square.x;
+                    piece.y = square.y;
+                }
+
+                // Move confirmed, deselect everything
+                deselect_all(selected_square, selected_piece);
+            } else {
+                // Otherwise, select piece in chosen square (if it exists)
+                for (piece_entity, piece) in pieces_query.iter_mut() {
+                    if piece.x == square.x && piece.y == square.y {
+                        selected_piece.entity = Some(piece_entity);
+                        break;
+                    }
+                }
+            }
+        }
     } else {
-        None
-    };
+        // Clicked outside board, deselect all
+        deselect_all(selected_square, selected_piece);
+    }
 }
 
 pub struct BoardPlugin;
@@ -97,6 +137,7 @@ pub struct BoardPlugin;
 impl Plugin for BoardPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.init_resource::<SelectedSquare>()
+            .init_resource::<SelectedPiece>()
             .add_startup_system(create_board.system())
             .add_system(color_squares.system())
             .add_system(select_square.system());

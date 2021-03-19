@@ -400,10 +400,22 @@ fn create_pieces(
     }
 }
 
+fn move_pieces(time: Res<Time>, mut query: Query<(&mut Transform, &Piece)>) {
+    for (mut transform, piece) in query.iter_mut() {
+        let direction = Vec3::new(piece.x as f32, 0., piece.y as f32) - transform.translation;
+
+        // Only move the piece if it isn't there already (distance is sufficiently large)
+        if direction.length() > 0.1 {
+            transform.translation += direction.normalize() * time.delta_seconds();
+        }
+    }
+}
+
 pub struct PiecesPlugin;
 
 impl Plugin for PiecesPlugin {
     fn build(&self, app: &mut AppBuilder) {
-        app.add_startup_system(create_pieces.system());
+        app.add_startup_system(create_pieces.system())
+            .add_system(move_pieces.system());
     }
 }
