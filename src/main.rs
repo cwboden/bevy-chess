@@ -43,6 +43,54 @@ fn create_board(
     }
 }
 
+fn create_pieces(
+    commands: &mut Commands,
+    asset_server: Res<AssetServer>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    // Load meshes
+    let king_handle: Handle<Mesh> = asset_server.load("models/pieces.glb#Mesh0/Primitive0");
+    let king_cross_handle: Handle<Mesh> = asset_server.load("models/pieces.glb#Mesh1/Primitive0");
+    let _pawn_handle: Handle<Mesh> = asset_server.load("models/pieces.glb#Mesh2/Primitive0");
+    let _knight_1_handle: Handle<Mesh> = asset_server.load("models/pieces.glb#Mesh3/Primitive0");
+    let _knight_2_handle: Handle<Mesh> = asset_server.load("models/pieces.glb#Mesh4/Primitive0");
+    let _rook_handle: Handle<Mesh> = asset_server.load("models/pieces.glb#Mesh5/Primitive0");
+    let _bishop_handle: Handle<Mesh> = asset_server.load("models/pieces.glb#Mesh6/Primitive0");
+    let _queen_handle: Handle<Mesh> = asset_server.load("models/pieces.glb#Mesh7/Primitive0");
+
+    // Create materials
+    let white_material = materials.add(Color::rgb(1., 0.8, 0.8).into());
+    let _black_material = materials.add(Color::rgb(0., 0.2, 0.2).into());
+
+    commands
+        .spawn(PbrBundle {
+            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 4.0)),
+            ..Default::default()
+        })
+        .with_children(|parent| {
+            parent.spawn(PbrBundle {
+                mesh: king_handle.clone(),
+                material: white_material.clone(),
+                transform: {
+                    let mut transform = Transform::from_translation(Vec3::new(-0.2, 0., -1.9));
+                    transform.apply_non_uniform_scale(Vec3::new(0.2, 0.2, 0.2));
+                    transform
+                },
+                ..Default::default()
+            });
+            parent.spawn(PbrBundle {
+                mesh: king_cross_handle.clone(),
+                material: white_material.clone(),
+                transform: {
+                    let mut transform = Transform::from_translation(Vec3::new(-0.2, 0., -1.9));
+                    transform.apply_non_uniform_scale(Vec3::new(0.2, 0.2, 0.2));
+                    transform
+                },
+                ..Default::default()
+            });
+        });
+}
+
 fn main() {
     App::build()
         .add_resource(Msaa { samples: 4 })
@@ -55,5 +103,6 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_startup_system(setup.system())
         .add_startup_system(create_board.system())
+        .add_startup_system(create_pieces.system())
         .run();
 }
