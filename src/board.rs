@@ -74,12 +74,31 @@ fn color_squares(
     }
 }
 
+fn select_square(
+    pick_state: Res<PickState>,
+    mouse_button_inputs: Res<Input<MouseButton>>,
+    mut selected_square: ResMut<SelectedSquare>,
+) {
+    // Only care about running this if the mouse button is pressed
+    if !mouse_button_inputs.just_pressed(MouseButton::Left) {
+        return;
+    }
+
+    selected_square.entity = if let Some((entity, _intersection)) = pick_state.top(Group::default())
+    {
+        Some(*entity)
+    } else {
+        None
+    };
+}
+
 pub struct BoardPlugin;
 
 impl Plugin for BoardPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.init_resource::<SelectedSquare>()
             .add_startup_system(create_board.system())
-            .add_system(color_squares.system());
+            .add_system(color_squares.system())
+            .add_system(select_square.system());
     }
 }
