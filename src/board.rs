@@ -1,5 +1,5 @@
-use crate::pieces::Piece;
-use bevy::prelude::*;
+use crate::pieces::{Piece, PieceColor, PieceType};
+use bevy::{app::AppExit, prelude::*};
 use bevy_mod_picking::{Group, PickState, PickableMesh};
 
 pub struct Square {
@@ -94,6 +94,8 @@ fn select_square(
     mouse_button_inputs: Res<Input<MouseButton>>,
     mut selected_square: ResMut<SelectedSquare>,
     mut selected_piece: ResMut<SelectedPiece>,
+    mut turn: ResMut<PlayerTurn>,
+    mut app_exit_events: ResMut<Events<AppExit>>,
     squares_query: Query<&Square>,
     mut pieces_query: Query<(Entity, &mut Piece, &Children)>,
 ) {
@@ -135,6 +137,18 @@ fn select_square(
                                 && other_piece.y == square.y
                                 && other_piece.color != piece.color
                             {
+                                // If the piece is a king, Game Over!
+                                if other_piece.piece_type == PieceType::King {
+                                    println!(
+                                        "{} won! Thanks for playing!",
+                                        match turn.0 {
+                                            PieceColor::White => "White",
+                                            PieceColor::Black => "Black",
+                                        }
+                                    );
+                                    app_exit_events.send(AppExit);
+                                }
+
                                 commands.despawn(other_entity);
                                 for child in other_children {
                                     commands.despawn(child);
@@ -144,6 +158,11 @@ fn select_square(
 
                         piece.x = square.x;
                         piece.y = square.y;
+
+                        turn.0 = match turn.0 {
+                            PieceColor::White => PieceColor::Black,
+                            PieceColor::Black => PieceColor::White,
+                        }
                     }
                 }
 
@@ -152,7 +171,7 @@ fn select_square(
             } else {
                 // Otherwise, select piece in chosen square (if it exists)
                 for (piece_entity, piece, _children) in pieces_query.iter_mut() {
-                    if piece.x == square.x && piece.y == square.y {
+                    if piece.x == square.x && piece.y == square.y && piece.color == turn.0 {
                         selected_piece.entity = Some(piece_entity);
                         break;
                     }
@@ -165,12 +184,21 @@ fn select_square(
     }
 }
 
+struct PlayerTurn(PieceColor);
+
+impl Default for PlayerTurn {
+    fn default() -> Self {
+        Self(PieceColor::White)
+    }
+}
+
 pub struct BoardPlugin;
 
 impl Plugin for BoardPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.init_resource::<SelectedSquare>()
             .init_resource::<SelectedPiece>()
+            .init_resource::<PlayerTurn>()
             .add_startup_system(create_board.system())
             .add_system(color_squares.system())
             .add_system(select_square.system());
