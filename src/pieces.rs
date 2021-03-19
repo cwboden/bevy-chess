@@ -24,6 +24,89 @@ pub struct Piece {
     pub y: u8,
 }
 
+impl Piece {
+    pub fn is_move_valid(&self, new_position: (u8, u8), pieces: &[Piece]) -> bool {
+        // If there's a piece of the same color in the new position, we can't move there.
+        if color_of_piece_on_square(new_position, pieces) == Some(self.color) {
+            return false;
+        }
+
+        // We can't move to the same place we currently are
+        if (self.x, self.y) == new_position {
+            return false;
+        }
+
+        let x_diff = (self.x as i8 - new_position.0 as i8).abs();
+        let y_diff = (self.y as i8 - new_position.1 as i8).abs();
+
+        match self.piece_type {
+            PieceType::King => x_diff <= 1 && y_diff <= 1,
+            PieceType::Queen => {
+                is_path_empty((self.x, self.y), new_position, &pieces)
+                    && (x_diff == y_diff || x_diff == 0 || y_diff == 0)
+            }
+            PieceType::Rook => {
+                (x_diff == 0 || y_diff == 0)
+                    && is_path_empty((self.x, self.y), new_position, &pieces)
+            }
+            PieceType::Bishop => {
+                x_diff == y_diff && is_path_empty((self.x, self.y), new_position, &pieces)
+            }
+            PieceType::Knight => (x_diff == 2 && y_diff == 1) || (x_diff == 1 && y_diff == 2),
+            PieceType::Pawn => match self.color {
+                PieceColor::White => {
+                    if new_position.0 as i8 - self.x as i8 == 1 {
+                        // Normal move
+                        if y_diff == 0 {
+                            return true;
+                        }
+                        // Taking piece
+                        if y_diff == 1
+                            && color_of_piece_on_square(new_position, &pieces)
+                                == Some(PieceColor::Black)
+                        {
+                            return true;
+                        }
+                    }
+                    // Move two squares ahead
+                    if self.x == 1
+                        && y_diff == 0
+                        && x_diff == 2
+                        && is_path_empty((self.x, self.y), new_position, &pieces)
+                    {
+                        return true;
+                    }
+                    false
+                }
+                PieceColor::Black => {
+                    if self.x as i8 - new_position.0 as i8 == 1 {
+                        // Normal move
+                        if y_diff == 0 {
+                            return true;
+                        }
+                        // Taking piece
+                        if y_diff == 1
+                            && color_of_piece_on_square(new_position, &pieces)
+                                == Some(PieceColor::White)
+                        {
+                            return true;
+                        }
+                    }
+                    // Move two squares ahead
+                    if self.x == 6
+                        && y_diff == 0
+                        && x_diff == 2
+                        && is_path_empty((self.x, self.y), new_position, &pieces)
+                    {
+                        return true;
+                    }
+                    false
+                }
+            },
+        }
+    }
+}
+
 fn piece_transform_from_translation(translation: Vec3) -> Transform {
     let mut transform = Transform::from_translation(translation);
     transform.apply_non_uniform_scale(Vec3::new(0.2, 0.2, 0.2));
@@ -409,6 +492,75 @@ fn move_pieces(time: Res<Time>, mut query: Query<(&mut Transform, &Piece)>) {
             transform.translation += direction.normalize() * time.delta_seconds();
         }
     }
+}
+
+fn get_piece_on_square(position: (u8, u8), pieces: &[Piece]) -> Option<&Piece> {
+    for piece in pieces {
+        if piece.x == position.0 && piece.y == position.1 {
+            return Some(&piece);
+        }
+    }
+
+    None
+}
+
+/// Returns the color of the piece at the given position, None otherwise.
+fn color_of_piece_on_square(position: (u8, u8), pieces: &[Piece]) -> Option<PieceColor> {
+    match get_piece_on_square(position, pieces) {
+        Some(piece) => Some(piece.color),
+        None => None,
+    }
+}
+
+fn is_between_range(start: u8, end: u8, value: u8) -> bool {
+    (value > start && value < end) || (value > end && value < start)
+}
+
+fn is_path_empty(begin: (u8, u8), end: (u8, u8), pieces: &[Piece]) -> bool {
+    // Same column
+    if begin.0 == end.0 {
+        for piece in pieces {
+            if piece.x == begin.0 && is_between_range(begin.1, end.1, piece.y) {
+                return false;
+            }
+        }
+    }
+
+    // Same row
+    if begin.1 == end.1 {
+        for piece in pieces {
+            if piece.y == begin.1 && is_between_range(begin.0, end.0, piece.x) {
+                return false;
+            }
+        }
+    }
+
+    // Diagonals
+    let x_diff = (begin.0 as i8 - end.0 as i8).abs();
+    let y_diff = (begin.1 as i8 - end.1 as i8).abs();
+    if x_diff == y_diff {
+        for i in 1..x_diff {
+            let position = if begin.0 < end.0 && begin.1 < end.1 {
+                // Left Down -> Right Up
+                (begin.0 + i as u8, begin.1 + i as u8)
+            } else if begin.0 < end.0 && begin.1 > end.1 {
+                // Left Up -> Right Down
+                (begin.0 + i as u8, begin.1 - i as u8)
+            } else if begin.0 > end.0 && begin.1 < end.1 {
+                // Right Down -> Left Up
+                (begin.0 - i as u8, begin.1 + i as u8)
+            } else {
+                // Right Up -> Left Down
+                (begin.0 - i as u8, begin.1 - i as u8)
+            };
+
+            if get_piece_on_square(position, pieces).is_some() {
+                return false;
+            }
+        }
+    }
+
+    true
 }
 
 pub struct PiecesPlugin;

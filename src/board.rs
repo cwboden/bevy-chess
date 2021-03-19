@@ -108,10 +108,15 @@ fn select_square(
 
             // If a piece is currently selected, move it to chosen square
             if let Some(selected_piece_entity) = selected_piece.entity {
+                let pieces_vec: Vec<Piece> =
+                    pieces_query.iter_mut().map(|(_, piece)| *piece).collect();
+
                 if let Ok((_piece_entity, mut piece)) = pieces_query.get_mut(selected_piece_entity)
                 {
-                    piece.x = square.x;
-                    piece.y = square.y;
+                    if piece.is_move_valid((square.x, square.y), &pieces_vec) {
+                        piece.x = square.x;
+                        piece.y = square.y;
+                    }
                 }
 
                 // Move confirmed, deselect everything
