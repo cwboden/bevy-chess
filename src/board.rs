@@ -159,10 +159,7 @@ fn select_square(
                         piece.x = square.x;
                         piece.y = square.y;
 
-                        turn.0 = match turn.0 {
-                            PieceColor::White => PieceColor::Black,
-                            PieceColor::Black => PieceColor::White,
-                        }
+                        turn.change();
                     }
                 }
 
@@ -189,6 +186,15 @@ pub struct PlayerTurn(pub PieceColor);
 impl Default for PlayerTurn {
     fn default() -> Self {
         Self(PieceColor::White)
+    }
+}
+
+impl PlayerTurn {
+    fn change(&mut self) {
+        self.0 = match self.0 {
+            PieceColor::White => PieceColor::Black,
+            PieceColor::Black => PieceColor::White,
+        }
     }
 }
 
